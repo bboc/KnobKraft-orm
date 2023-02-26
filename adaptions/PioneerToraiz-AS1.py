@@ -6,185 +6,212 @@
 
 import hashlib
 
-CANNOT_FIND_DATA_BLOCK = "Cannot find the message's data block."
+# start byte, 3x Pioneer ID, 3x Toraiz ID, Device ID (can't be changed in the device)
+TORAIZ_HEADER = [0xf0, 0x00, 0x40, 0x05, 0x00, 0x00, 0x01, 0x08, 0x10]
+END = 0xf7
+
+GLOBAL_PARAMETER_REQUEST = 0x0e
+GLOBAL_PARAMETER_DUMP = 0x0f
+
+# [f0 00 40 05 00 00 01 08 10 0f 0c 32 00 04 00 02 02 01 01 02 01 01 00 00 00 01 04 03 00 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f7]
+# [f0 00 40 05 00 00 01 08 10 0f 0c 32 03 04 00 02 02 01 01 02 01 01 00 00 00 01 04 03 00 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f7]
+
+EDIT_BUFFER_REQUEST = 0b00000110
+EDIT_BUFFER_DUMP = 0b00000011
+
+PROGRAM_DUMP_REQUEST = 0b00000101
+PROGRAM_DUMP = 0b00000010
+
+# Length of patch name
+NAME_LEN = 20
+NAME_OFFSET = 107
+
+
+BANK_SIZE = 99
+NUMBER_OF_BANKS = 10
+
+
+# 0: no log, 1: API, 2: API + local functions
+LOGLEVEL = 0
+
+def _log(lvl,msg):
+    if LOGLEVEL >= lvl: print(':'* lvl, msg)
+
 
 def name():
     return "Pioneer Toraiz AS-1"
 
 
+def _isMessageType(message, message_type):
+    _log(2, "_isMessageType(message, {message_type})")
+    """Return True if this is a sysex response from this device with the given message_type."""
+    return (len(message) > len(TORAIZ_HEADER) + 2
+            and message[0:len(TORAIZ_HEADER)] == TORAIZ_HEADER
+            and message[9] == message_type
+            and message[-1] == END
+            )
+
+
+def numberOfBanks():
+    return NUMBER_OF_BANKS
+
+def numberOfPatchesPerBank():
+    return BANK_SIZE
+
+def isDefaultName(patch_name):
+    _log(2, f"")
+    return patch_name == "Basic Program"
+
+
+def _splitProgramNumber(program_number):
+    _log(2, f"_splitProgramNumber({program_number})")
+    """Return bank and patch indexes from program_number"""
+    bank = program_number // BANK_SIZE
+    patch = program_number % BANK_SIZE
+    return bank, patch
+
+def friendlyBankName(bank_number):
+    _log(1, f"friendlyBankName({bank_number})")
+    """Convert bank numbers to bank names as displayed on the Toraiz AS-1."""
+    if bank_number < 5:
+        return f"U.{bank_number + 1}"
+    return f"F.{bank_number - 4}"
+
+def friendlyProgramName(program_number):
+    _log(1, f"def friendlyProgramName({program_number})")
+    bank, patch_number = _splitProgramNumber(program_number)
+    return f"{friendlyBankName(bank)} P.{patch_number+1:02}"
+
+
 def createDeviceDetectMessage(channel):
+    _log(1, f"createDeviceDetectMessage({channel})")
     # See page 33 of the Toraiz AS-1 manual
-    return [0xf0, 0x7e, 0x7f, 0b00000110, 1, 0xf7]
+    return [*TORAIZ_HEADER, GLOBAL_PARAMETER_REQUEST, END]
 
 
 def needsChannelSpecificDetection():
+    _log(1, f"needsChannelSpecificDetection()")
     return False
 
 
 def channelIfValidDeviceResponse(message):
+    _log(1, f"channelIfValidDeviceResponse({message})")
     # The manual states the AS1 replies with a 15 byte long message, see page 33
-    if (len(message) == 15
-            and message[0] == 0xf0  # Sysex
-            and message[1] == 0x7e  # Non-realtime
-            # ignore message[2] - that's the current midi channel
-            and message[3] == 0b0110  # Device request
-            and message[4] == 0b0010  # Reply
-            and message[5] == 0b00000000  # Pioneer ID byte 1
-            and message[6] == 0b01000000  # Pioneer ID byte 2
-            and message[7] == 0b00000101  # Pioneer ID byte 3
-            and message[8] == 0b00000000  # Toriaz ID byte 1
-            and message[9] == 0b00000000  # Toriaz ID byte 2
-            and message[10] == 0b00000001  # Toriaz ID byte 3
-            and message[11] == 0b00001000):  # Toriaz ID byte 4
-            #and message[12] == 0b00010000):  # Device ID
-        # This is indeed the right package, now extract the MIDI channel from the message
-        if message[2] == 0x7f:
-            # The Toraiz is set to OMNI. Not a good idea, but let's treat this as channel 1 for now
-            return 1
+    if (len(message) == 59 and _isMessageType(message, GLOBAL_PARAMETER_DUMP)
+        ):
+        channel = message[12] # TODO: that should NOT work, but it does!
+        print(f"found a Toraiz AS-1 on channel {channel}")
+        if channel == 0: # The Toraiz is set to OMNI: just use channel 1
+            return 0
         else:
-            return message[2]
+            return channel - 1 # the channel in the AS-1 is not zero-based!
     return -1
 
 
 def createEditBufferRequest(channel):
+    _log(1, f"createEditBufferRequest({channel})")
     # See page 34 of the Toraiz manual
-    return [0xf0, 0b00000000, 0b01000000, 0b00000101, 0b00000000, 0b000000000, 0b00000001, 0b00001000, 0b00010000,
-            0b00000110, 0xf7]
+    return [*TORAIZ_HEADER, EDIT_BUFFER_REQUEST, END]
 
 
 def isEditBufferDump(message):
+    _log(1, f"isEditBufferDump(message)")
     # see page 35 of the manual
-    return (len(message) > 9
-            and message[0] == 0xf0
-            and message[1] == 0b00000000  # Pioneer ID byte 1
-            and message[2] == 0b01000000  # Pioneer ID byte 2
-            and message[3] == 0b00000101  # Pioneer ID byte 3
-            and message[4] == 0b00000000  # Toriaz ID byte 1
-            and message[5] == 0b00000000  # Toriaz ID byte 2
-            and message[6] == 0b00000001  # Toriaz ID byte 3
-            and message[7] == 0b00001000  # Toriaz ID byte 4
-            and message[8] == 0b00010000  # Device ID
-            and message[9] == 0b00000011)  # Edit Buffer Dump
+    return _isMessageType(message, EDIT_BUFFER_DUMP)
 
 
-def numberOfBanks():
-    return 10
-
-
-def numberOfPatchesPerBank():
-    return 100
-
-
-def getZeroBasedBankNumber(patch_number):
-    """Takes a zero-based patch number and returns the corresponding zero-based bank number."""
-    return patch_number // numberOfPatchesPerBank()
-
-
-def createProgramDumpRequest(channel, patchNo):
+def createProgramDumpRequest(channel, patch_number):
+    _log(1, f"createProgramDumpRequest({channel}, {patch_number})")
     # Calculate bank and program - the KnobKraft Orm will just think the patches are 0 to 999, but the Toraiz needs a
     # bank number 0-9 and the patch number within that bank
-    bank = getZeroBasedBankNumber(patchNo)
-    program = patchNo % numberOfPatchesPerBank()
+    bank, program = _splitProgramNumber(patch_number)
     # See page 33 of the Toraiz manual
-    return [0xf0, 0b00000000, 0b01000000, 0b00000101, 0b00000000, 0b000000000, 0b00000001, 0b00001000, 0b00010000,
-            0b00000101, bank, program, 0xf7]
+    return [*TORAIZ_HEADER, PROGRAM_DUMP_REQUEST, bank, program, END]
 
 
 def isSingleProgramDump(message):
+    _log(1, f"isSingleProgramDump(message)")
     # see page 34 of the manual
-    return (len(message) > 9
-            and message[0] == 0xf0
-            and message[1] == 0b00000000  # Pioneer ID byte 1
-            and message[2] == 0b01000000  # Pioneer ID byte 2
-            and message[3] == 0b00000101  # Pioneer ID byte 3
-            and message[4] == 0b00000000  # Toriaz ID byte 1
-            and message[5] == 0b00000000  # Toriaz ID byte 2
-            and message[6] == 0b00000001  # Toriaz ID byte 3
-            and message[7] == 0b00001000  # Toriaz ID byte 4
-            and message[8] == 0b00010000  # Device ID
-            and message[9] == 0b00000010)  # Program Dump
+    return _isMessageType(message, PROGRAM_DUMP)
 
 
 def nameFromDump(message):
-    """Extracts the patch name from the supplied sysex message."""
-    INVALID = "Invalid"
-    dataBlockStart = getDataBlockStart(message)
-    if dataBlockStart == -1:
-        return INVALID
-    dataBlock = message[dataBlockStart:-1]
-    if len(dataBlock) > 0:
-        patchData = unescapeSysex(dataBlock)
-        return ''.join([chr(x) for x in patchData[107:107+20]])
-    return INVALID
+    _log(1, f"nameFromDump(message)")
+    """Extract the patch name from the supplied sysex message."""
+    patchData =_extract_patch_data(message)
+    return ''.join([chr(c) for c in patchData[NAME_OFFSET:NAME_OFFSET+NAME_LEN]])
 
 
 def renamePatch(message, new_name):
+    _log(1, f"renamePatch(message, {new_name})")
     """Returns a copy of the supplied sysex message whose internal name has been replaced with new_name."""
-    dataBlockStart = getDataBlockStart(message)
-    if dataBlockStart == -1:
-        raise Exception(CANNOT_FIND_DATA_BLOCK)
+    header, patchData = _extract_header_and_patch_data(message)
+    patchData = _update_name_in_patch_data(patchData, new_name)
+    # Rebuild the message with the new data block, appending "end of exclusive" (EOX).
+    return header + _encode_8bit_to_7bit(patchData) + [END]
+
+
+def calculateFingerprint(message):
+    _log(1, f"calculateFingerprint(message)")
+    """Calculates a hash from the message's data block only, ignoring the patch's name."""
+    patchData = _extract_patch_data(message)
+    patchData = _update_name_in_patch_data(patchData, '')
+    return hashlib.md5(bytearray(patchData)).hexdigest()
+
+
+def _update_name_in_patch_data(patchData, new_name):
+    _log(2, f"_update_name_in_patch_data({patchData}, {new_name})")
+    """Update name in decoded patch data, name might be empty."""
+    # Normalize the name to 20 characters: add 20 spaces, then truncate
+    name = new_name + " " * NAME_LEN
+    name = name[:NAME_LEN]
+    patchData[NAME_OFFSET:NAME_OFFSET+NAME_LEN] = map(ord, name)
+    return patchData
+
+def _extract_patch_data(message):
+    _log(2, f"_extract_patch_data(message)")
+    return _extract_header_and_patch_data(message)[1]
+
+def _extract_header_and_patch_data(message):
+    _log(2, f"_extract_header_and_patch_data(message)")
+    """Return message header and the decoded data block from message, raise Exception if message type is unknown."""
+    if isSingleProgramDump(message):
+        dataBlockStart = 12
+    elif isEditBufferDump(message):
+        dataBlockStart = 10
+    else:
+        raise Exception(f"Unknown message type {message}")
+
     dataBlock = message[dataBlockStart:-1]
     if len(dataBlock) == 0:
         raise Exception("Data block length was 0.")
-    patchData = unescapeSysex(dataBlock)
-    # Normalize the name to exactly 20 characters, padding with spaces or truncating.
-    if len(new_name) < 20:
-        new_name += (" " * (20 - len(new_name)))
-    elif len(new_name) > 20:
-        new_name = new_name[:20]
-    nameBytes = list(map(ord, new_name))
-    patchData[107:107+20] = nameBytes
-    escapedPatchData = escapeToSysex(patchData)
-    # Rebuild the message with the new data block, appending "end of exclusive" (EOX).
-    newMessage = message[:dataBlockStart] + escapedPatchData + [0xF7]
-    return newMessage
 
-    
-def calculateFingerprint(message):
-    """Calculates a hash from the message's data block only, ignoring the patch's name."""
-    dataBlockStart = getDataBlockStart(message)
-    if dataBlockStart == -1:
-        raise Exception(CANNOT_FIND_DATA_BLOCK)
-    dataBlock = message[dataBlockStart:-1]
-    data = unescapeSysex(dataBlock)   
-    dummyName = " " * 20
-    data[107:107+20] = map(ord, dummyName)
-    fingerprint = hashlib.md5(bytearray(data)).hexdigest()    
-    return fingerprint
-
-
-def getDataBlockStart(message):
-    """Returns the start index of the data block within a sysex message, or -1 if the data block cannot be found."""
-    if isSingleProgramDump(message):
-        return 12
-    elif isEditBufferDump(message):
-        return 10
-    else:
-        return -1
-
+    patchData = _decode_7bit_to_8bit(dataBlock)
+    return message[:dataBlockStart], patchData
 
 def convertToEditBuffer(channel, message):
+    _log(1, f"convertToEditBuffer({channel}, message)")
     if isEditBufferDump(message):
         return message
     if isSingleProgramDump(message):
-        # To turn a single program dump into an edit buffer dump, we need to remove the bank and program number,
-        # and switch the command to 0b00000011
-        return message[0:9] + [0b00000011] + message[12:]
+        # remove the bank and program numben and switch the command
+        return [*TORAIZ_HEADER, EDIT_BUFFER_DUMP, *message[12:]]
     raise Exception("Data is neither edit buffer nor single program buffer from Toraiz AS-1")
 
 
 def convertToProgramDump(channel, message, program_number):
-    bank = getZeroBasedBankNumber(program_number)
-    program = program_number % numberOfPatchesPerBank()
+    _log(1, f"convertToProgramDump({channel}, message, {program_number})")
+    bank, program = _splitProgramNumber(program_number)
     if isEditBufferDump(message):
-        return message[0:9] + [0b00000010] + [bank, program] + message[10:]
+        return message[0:9] + [PROGRAM_DUMP] + message[12:]
     elif isSingleProgramDump(message):
         return message[0:10] + [bank, program] + message[12:]
     raise Exception("Neither edit buffer nor program dump - can't be converted")
 
 
-def unescapeSysex(sysex):
-    """Unpacks a 7-bit sysex message into 8-bit bytes."""
+def _decode_7bit_to_8bit(sysex):
+    _log(2, f"_decode_7bit_to_8bit(sysex)")
+    """Decode a 7-bit sysex message to 8-bit bytes."""
     result = []
     dataIndex = 0
     while dataIndex < len(sysex):
@@ -197,22 +224,23 @@ def unescapeSysex(sysex):
     return result
 
 
-def escapeToSysex(message):
-    """Packs a message composed of 8-bit bytes into 7-bit sysex format."""
+def _encode_8bit_to_7bit(data):
+    _log(2, f"_encode_8bit_to_7bit(data)")
+    """Encode 8 bit data into 7-bit sysex format."""
     result = []
     msBits = 0
     byteIndex = 0
     chunk = []
-    while byteIndex < len(message):
+    while byteIndex < len(data):
         indexInChunk = byteIndex % 7
         if indexInChunk == 0:
             chunk = []
-        currentByte = message[byteIndex]
+        currentByte = data[byteIndex]
         lsBits = currentByte & 0x7F
         msBit = currentByte & 0x80
         msBits |= msBit >> (7 - indexInChunk)
         chunk.append(lsBits)
-        if indexInChunk == 6 or byteIndex == len(message) - 1:
+        if indexInChunk == 6 or byteIndex == len(data) - 1:
             chunk.insert(0, msBits)
             result += chunk
             msBits = 0
@@ -220,17 +248,7 @@ def escapeToSysex(message):
     return result
 
 
-def isDefaultName(patch_name):
-    return patch_name == "Basic Program"
-
-
-def friendlyBankName(bank_number):
-    """Converts bank numbers to bank names as displayed on the Toraiz AS-1."""
-    if bank_number < 5:
-        return "U{}".format(bank_number + 1)
-    return "F{}".format(bank_number - 4)
-
-
-def friendlyProgramName(program_number):
-    """Converts zero-based program numbers within a bank to the format displayed on the Toraiz AS-1."""
-    return "P{}".format(program_number + 1)
+if __name__ == '__main__':
+    """run all tests"""
+    #_run_tests()
+    print(friendlyProgramName(3))
