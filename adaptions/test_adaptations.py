@@ -26,7 +26,7 @@ def skip_targets_without(parameter_name):
 #
 # Fixtures prepare the test data for the tests below
 #
-class TestData:
+class AdaptationTestData:
     def __init__(self, adaptation):
         self.test_dict = adaptation.test_data()
         self.all_messages = []
@@ -43,7 +43,7 @@ class TestData:
 @pytest.fixture
 def test_data(adaptation):
     if hasattr(adaptation, "test_data"):
-        return TestData(adaptation)
+        return AdaptationTestData(adaptation)
     else:
         return None
 
@@ -58,7 +58,7 @@ def test_name_is_not_none(adaptation):
 
 
 @skip_targets_without("test_data")
-def test_detection(adaptation, test_data: TestData):
+def test_detection(adaptation, test_data: AdaptationTestData):
     if hasattr(test_data, "detection_reply"):
         assert adaptation.channelIfValidDeviceResponse(test_data.detection_reply[0]) == test_data.detection_reply[1]
     else:
@@ -66,7 +66,7 @@ def test_detection(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_extract_name(adaptation, test_data: TestData):
+def test_extract_name(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "nameFromDump") and test_data is not None:
         for program in test_data.programs:
             assert adaptation.nameFromDump(program["message"]) == program["name"]
@@ -75,7 +75,7 @@ def test_extract_name(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_rename(adaptation, test_data: TestData):
+def test_rename(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "nameFromDump") and hasattr(adaptation, "renamePatch"):
         binary = test_data.program_dump
         # Rename to the name it already has
@@ -98,7 +98,7 @@ def test_rename(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_is_program_dump(adaptation, test_data: TestData):
+def test_is_program_dump(adaptation, test_data: AdaptationTestData):
     for program in test_data.programs:
         if "is_edit_buffer" in program:
             assert adaptation.isEditBufferDump(program["message"])
@@ -107,7 +107,7 @@ def test_is_program_dump(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_convert_to_edit_buffer(adaptation, test_data: TestData):
+def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "convertToEditBuffer") or hasattr(adaptation, "convertToProgramDump"):
         for program_data in test_data.programs:
             if "target_no" in program_data:
@@ -154,7 +154,7 @@ def test_convert_to_edit_buffer(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_number_from_dump(adaptation, test_data: TestData):
+def test_number_from_dump(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "numberFromDump"):
         for program in test_data.programs:
             assert adaptation.numberFromDump(program["message"]) == program["number"]
@@ -163,7 +163,7 @@ def test_number_from_dump(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_layer_name(adaptation, test_data: TestData):
+def test_layer_name(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "layerName"):
         for program in test_data.programs:
             assert adaptation.layerName(program["message"], 1) == program["second_layer_name"]
@@ -176,7 +176,7 @@ def test_layer_name(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_fingerprinting(adaptation, test_data: TestData):
+def test_fingerprinting(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "calculateFingerprint"):
         for program in test_data.programs:
             md5 = adaptation.calculateFingerprint(program["message"])
@@ -200,7 +200,7 @@ def test_fingerprinting(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_device_detection(adaptation, test_data: TestData):
+def test_device_detection(adaptation, test_data: AdaptationTestData):
     found = False
     if "device_detect_call" in test_data.test_dict:
         assert adaptation.createDeviceDetectMessage(0x00) == knobkraft.stringToSyx(test_data.test_dict["device_detect_call"])
@@ -213,7 +213,7 @@ def test_device_detection(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_program_dump_request(adaptation, test_data: TestData):
+def test_program_dump_request(adaptation, test_data: AdaptationTestData):
     if "program_dump_request" in test_data.test_dict:
         assert knobkraft.list_compare(adaptation.createProgramDumpRequest(0x00, 0x00),
                                       knobkraft.stringToSyx(test_data.test_dict["program_dump_request"]))
@@ -222,7 +222,7 @@ def test_program_dump_request(adaptation, test_data: TestData):
 
 
 @skip_targets_without("test_data")
-def test_friendly_bank_name(adaptation, test_data: TestData):
+def test_friendly_bank_name(adaptation, test_data: AdaptationTestData):
     if "friendly_bank_name" in test_data.test_dict:
         bank_data = test_data.test_dict["friendly_bank_name"]
         assert adaptation.friendlyBankName(bank_data[0]) == bank_data[1]
