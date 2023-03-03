@@ -110,7 +110,7 @@ def test_rename(adaptation, test_data: AdaptationTestData):
 @skip_targets_without_test_data()
 def test_is_program_dump(adaptation, test_data: AdaptationTestData):
     for program in test_data.programs:
-        if "is_edit_buffer" in program:
+        if program.get("is_edit_buffer"):
             assert adaptation.isEditBufferDump(program["message"])
         else:
             assert adaptation.isSingleProgramDump(program["message"])
