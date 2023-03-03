@@ -143,7 +143,7 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
                 if "not_idempotent" in test_data.test_dict:
                     pass
                 else:
-                    assert program == adaptation.convertToProgramDump(0x00, program, previous_number)
+                    assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
                 if hasattr(adaptation, "convertToEditBuffer"):
                     program_buffer = adaptation.convertToProgramDump(0x00, edit_buffer, target_no)
                 else:
