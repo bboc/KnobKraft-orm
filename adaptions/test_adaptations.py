@@ -178,7 +178,7 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
             if hasattr(adaptation, "nameFromDump") and edit_buffer is not None:
                 assert adaptation.nameFromDump(program_buffer) == adaptation.nameFromDump(edit_buffer)
     else:
-        pytest.skip(f"{adaptation.name} has not implemented convertToEditBuffer")
+        pytest.skip(f"{adaptation.name()} has not implemented convertToEditBuffer")
 
 
 # these are the new tests
