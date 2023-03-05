@@ -161,6 +161,7 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
                 else:
                     assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
                 if hasattr(adaptation, "convertToEditBuffer"):
+                    # this only verifies edit_buffer has actually been set above
                     program_buffer = adaptation.convertToProgramDump(0x00, edit_buffer, target_no)
                 else:
                     # this code path should never be reached, because above it has been tested that program is alreadt a single program dump
