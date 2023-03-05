@@ -199,15 +199,16 @@ def test_convert_to_edit_buffer_(adaptation, test_data: AdaptationTestData):
                 previous_number = adaptation.numberFromDump(program)
             if hasattr(adaptation, "convertToEditBuffer"):
                 edit_buffer = adaptation.convertToEditBuffer(0x00, program)
-                if "convert_to_edit_buffer_produces_program_dump" in test_data.test_dict and test_data.test_dict["convert_to_edit_buffer_produces_program_dump"]:
+                if test_data.test_dict.get("convert_to_edit_buffer_produces_program_dump"):
                     # This is a special case for the broken implementation of the Andromeda edit buffer
                     assert adaptation.isSingleProgramDump(edit_buffer)
                 else:
+                    # this relies on isEditBufferDump, but it's not tested
                     assert adaptation.isEditBufferDump(edit_buffer)
             if not hasattr(adaptation, "convertToProgramDump"):
                 # Not much more we can test here
-                return
-            if "not_idempotent" in test_data.test_dict:
+                continue
+            if  test_data.test_dict.get("not_idempotent"):
                 pass
             else:
                 assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
@@ -236,7 +237,7 @@ def test_convert_to_edit_buffer_(adaptation, test_data: AdaptationTestData):
 @skip_targets_without("isEditBufferDump")
 def test_convert_to_program_dump_(adaptation, test_data: AdaptationTestData):
     tested = False
-    for program_data in test_data.programs:
+     for program_data in test_data.programs:
         if "target_no" in program_data:
             target_no = program_data["target_no"]
         else:
@@ -249,15 +250,16 @@ def test_convert_to_program_dump_(adaptation, test_data: AdaptationTestData):
                 previous_number = adaptation.numberFromDump(program)
             if hasattr(adaptation, "convertToEditBuffer"):
                 edit_buffer = adaptation.convertToEditBuffer(0x00, program)
-                if "convert_to_edit_buffer_produces_program_dump" in test_data.test_dict and test_data.test_dict["convert_to_edit_buffer_produces_program_dump"]:
+                if test_data.test_dict.get("convert_to_edit_buffer_produces_program_dump"):
                     # This is a special case for the broken implementation of the Andromeda edit buffer
                     assert adaptation.isSingleProgramDump(edit_buffer)
                 else:
+                    # this relies on isEditBufferDump, but it's not tested
                     assert adaptation.isEditBufferDump(edit_buffer)
             if not hasattr(adaptation, "convertToProgramDump"):
                 # Not much more we can test here
-                return
-            if "not_idempotent" in test_data.test_dict:
+                continue
+            if  test_data.test_dict.get("not_idempotent"):
                 pass
             else:
                 assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
