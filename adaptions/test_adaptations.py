@@ -214,7 +214,7 @@ def test_device_detection(adaptation, test_data: AdaptationTestData):
         assert adaptation.channelIfValidDeviceResponse(knobkraft.stringToSyx(test_data.test_dict["device_detect_reply"])) == 0x00
         found = True
     if not found:
-        pytest.skip(f"{adaptation.name} has not provided test data for the device_detect_call or the device_detect_reply")
+        pytest.skip(f"{adaptation.name()} does provide test data for the device_detect_call or the device_detect_reply")
 
 
 @skip_targets_without_test_data("program_dump_request")
