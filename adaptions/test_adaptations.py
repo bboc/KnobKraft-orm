@@ -108,12 +108,27 @@ def test_rename(adaptation, test_data: AdaptationTestData):
 
 
 @skip_targets_without_test_data()
+@skip_targets_without("isSingleProgramDump")
 def test_is_program_dump(adaptation, test_data: AdaptationTestData):
+    tested = False
+    for program in test_data.programs:
+        if not program.get("is_edit_buffer"):
+            assert adaptation.isSingleProgramDump(program["message"])
+            tested = True
+    if not tested:
+        pytest.skip(f"{adaptation.name} does not provide test data for test_is_program_dump()")
+
+
+@skip_targets_without_test_data()
+@skip_targets_without("isEditBufferDump")
+def test_is_edit_buffer_dump(adaptation, test_data: AdaptationTestData):
+    tested = False
     for program in test_data.programs:
         if program.get("is_edit_buffer"):
             assert adaptation.isEditBufferDump(program["message"])
-        else:
-            assert adaptation.isSingleProgramDump(program["message"])
+            tested = True
+    if not tested:
+        pytest.skip(f"{adaptation.name()} does not provide test data for test_is_edit_buffer_dump()")
 
 
 @skip_targets_without_test_data()
