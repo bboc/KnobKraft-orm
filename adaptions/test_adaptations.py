@@ -178,7 +178,9 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
     else:
         pytest.skip(f"{adaptation.name} has not implemented convertToEditBuffer")
 
+
 # these are the new tests
+@pytest.mark.skip(reason="WIP")
 @skip_targets_without_test_data()
 @skip_targets_without("convertToEditBuffer")
 @skip_targets_without("isSingleProgramDump")
@@ -227,10 +229,12 @@ def test_convert_to_edit_buffer_(adaptation, test_data: AdaptationTestData):
     if not tested: 
         pytest.skip(f"{adaptation.name} did not provide test data for testing convertToEditBuffer")
 
+
+@pytest.mark.skip(reason="WIP")
 @skip_targets_without_test_data()
 @skip_targets_without("convertToProgramDump")
 @skip_targets_without("isEditBufferDump")
-def test_convert_to_program_dup_(adaptation, test_data: AdaptationTestData):
+def test_convert_to_program_dump_(adaptation, test_data: AdaptationTestData):
     tested = False
     for program_data in test_data.programs:
         if "target_no" in program_data:
