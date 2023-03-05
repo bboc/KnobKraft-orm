@@ -130,9 +130,8 @@ def test_is_edit_buffer_dump(adaptation, test_data: AdaptationTestData):
     if not tested:
         pytest.skip(f"{adaptation.name()} does not provide test data for test_is_edit_buffer_dump()")
 
-# this is the old test
 @skip_targets_without_test_data()
-def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
+def test_convert_to_edit_buffer_old(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "convertToEditBuffer") or hasattr(adaptation, "convertToProgramDump"):
         for program_data in test_data.programs:
             if "target_no" in program_data:
@@ -159,6 +158,7 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
                 if  test_data.test_dict.get("not_idempotent"):
                     pass
                 else:
+                    # this fails if numberFromDump is not implemented and test data is not a program at number 0!
                     assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
                 if hasattr(adaptation, "convertToEditBuffer"):
                     # this only verifies edit_buffer has actually been set above
