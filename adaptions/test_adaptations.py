@@ -247,6 +247,8 @@ def test_convert_to_program_dump(adaptation, test_data: AdaptationTestData):
             target_no = program_data["target_no"]
         program = program_data["message"]
 
+        assert adaptation.isSingleProgramDump(program) == False:
+
         program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
         assert adaptation.isSingleProgramDump(program_buffer)
         if hasattr(adaptation, "convertToEditBuffer"):
