@@ -166,7 +166,9 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
                     program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
             elif hasattr(adaptation, "isEditBufferDump") and adaptation.isEditBufferDump(program):
                 program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
+                # this relies on isSingleProgramDump, but does not test for it
                 assert adaptation.isSingleProgramDump(program_buffer)
+                # this relies on convertToEditBuffer, but does not test for it                
                 edit_buffer = adaptation.convertToEditBuffer(0x00, program_buffer)
             else:
                 program_buffer = program
