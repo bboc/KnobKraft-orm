@@ -183,54 +183,46 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
         pytest.skip(f"{adaptation.name()} has not implemented convertToEditBuffer")
 
 
-# these are the new tests
-@pytest.mark.skip(reason="WIP")
 @skip_targets_without_test_data()
 @skip_targets_without("convertToEditBuffer")
-@skip_targets_without("isSingleProgramDump")
-def test_convert_to_edit_buffer_(adaptation, test_data: AdaptationTestData):
+@skip_targets_without("isEditBufferDump")
+def test_convert_to_edit_buffer_new(adaptation, test_data: AdaptationTestData):
     tested = False
     for program_data in test_data.programs:
+        if program_data.get("is_edit_buffer"):
+            continue # test data is not a program buffer dump
+        target_no = 4 # chose random target number
         if "target_no" in program_data:
             target_no = program_data["target_no"]
-        else:
-            # Choose something random
-            target_no = 11
         program = program_data["message"]
-        if hasattr(adaptation, "isSingleProgramDump") and adaptation.isSingleProgramDump(program):
-            previous_number = 0
-            if hasattr(adaptation, "numberFromDump"):
-                previous_number = adaptation.numberFromDump(program)
-            if hasattr(adaptation, "convertToEditBuffer"):
-                edit_buffer = adaptation.convertToEditBuffer(0x00, program)
-                if test_data.test_dict.get("convert_to_edit_buffer_produces_program_dump"):
-                    # This is a special case for the broken implementation of the Andromeda edit buffer
-                    assert adaptation.isSingleProgramDump(edit_buffer)
-                else:
-                    # this relies on isEditBufferDump, but it's not tested
-                    assert adaptation.isEditBufferDump(edit_buffer)
-            if not hasattr(adaptation, "convertToProgramDump"):
-                # Not much more we can test here
-                continue
-            if  test_data.test_dict.get("not_idempotent"):
-                pass
-            else:
-                assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
-            if hasattr(adaptation, "convertToEditBuffer"):
-                program_buffer = adaptation.convertToProgramDump(0x00, edit_buffer, target_no)
-            else:
-                program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
-        elif hasattr(adaptation, "isEditBufferDump") and adaptation.isEditBufferDump(program):
-            program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
-            assert adaptation.isSingleProgramDump(program_buffer)
-            edit_buffer = adaptation.convertToEditBuffer(0x00, program_buffer)
-        else:
-            program_buffer = program
-            edit_buffer = None
+    
+        assert adaptation.isEditBufferDump(program) == False
+
+        previous_number = 0
         if hasattr(adaptation, "numberFromDump"):
-            assert adaptation.numberFromDump(program_buffer) == target_no
-        if hasattr(adaptation, "nameFromDump") and edit_buffer is not None:
-            assert adaptation.nameFromDump(program_buffer) == adaptation.nameFromDump(edit_buffer)
+            previous_number = adaptation.numberFromDump(program)
+
+        edit_buffer = adaptation.convertToEditBuffer(0x00, program)
+
+        if test_data.test_dict.get("convert_to_edit_buffer_produces_program_dump"):
+            # This is a special case for the broken implementation of the Andromeda edit buffer
+            assert hasattr(adaptation, "isSingleProgramDump") # whoever uses this special case must implement isSingleProgramDump
+            assert adaptation.isSingleProgramDump(edit_buffer)
+        else:
+            assert adaptation.isEditBufferDump(edit_buffer)
+        # the assertion above may be the only thing that is tested, everything else depends on other functions that might not be present
+        tested = True
+
+        if hasattr(adaptation, "convertToProgramDump"):
+            if not test_data.test_dict.get("not_idempotent"):
+                # 
+                assert knobkraft.list_compare(program, adaptation.convertToProgramDump(0x00, program, previous_number))
+            program_buffer = adaptation.convertToProgramDump(0x00, edit_buffer, target_no)
+
+            if hasattr(adaptation, "numberFromDump"):
+                assert adaptation.numberFromDump(program_buffer) == target_no
+            if hasattr(adaptation, "nameFromDump") and edit_buffer is not None:
+                assert adaptation.nameFromDump(program_buffer) == adaptation.nameFromDump(edit_buffer)
     if not tested: 
         pytest.skip(f"{adaptation.name()} did not provide test data for testing convertToEditBuffer")
 
@@ -238,7 +230,7 @@ def test_convert_to_edit_buffer_(adaptation, test_data: AdaptationTestData):
 @skip_targets_without_test_data()
 @skip_targets_without("convertToProgramDump")
 @skip_targets_without("isSingleProgramDump")
-def test_convert_to_program_dump(adaptation, test_data: AdaptationTestData):
+def test_convert_to_program_dump_new(adaptation, test_data: AdaptationTestData):
     tested = False
     for program_data in test_data.programs:
         if not program_data.get("is_edit_buffer"):
@@ -247,20 +239,23 @@ def test_convert_to_program_dump(adaptation, test_data: AdaptationTestData):
         if "target_no" in program_data:
             # what use is target_no in the test data anyway
             target_no = program_data["target_no"]
-        program = program_data["message"]
+        
+        edit_buffer = program_data["message"]
 
-        assert adaptation.isSingleProgramDump(program) == False:
+        assert adaptation.isSingleProgramDump(edit_buffer) == False
 
-        program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
-        assert adaptation.isSingleProgramDump(program_buffer)
+        program_dump = adaptation.convertToProgramDump(0x00, edit_buffer, target_no)
+        assert adaptation.isSingleProgramDump(program_dump)
         if hasattr(adaptation, "convertToEditBuffer"):
             # it should be possible to convert that back into an edit buffer
-            edit_buffer = adaptation.convertToEditBuffer(0x00, program_buffer)
+            edit_buffer2 = adaptation.convertToEditBuffer(0x00, program_dump)
+            if hasattr(adaptation, "isEditBufferDump"):
+                assert adaptation.isEditBufferDump(edit_buffer2)
 
         if hasattr(adaptation, "numberFromDump"):
-            assert adaptation.numberFromDump(program_buffer) == target_no
+            assert adaptation.numberFromDump(program_dump) == target_no
         if hasattr(adaptation, "nameFromDump"):
-            assert adaptation.nameFromDump(program_buffer) == adaptation.nameFromDump(program)
+            assert adaptation.nameFromDump(program_dump) == adaptation.nameFromDump(edit_buffer)
 
         tested = True
     if not tested: 
