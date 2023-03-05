@@ -163,6 +163,7 @@ def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
                 if hasattr(adaptation, "convertToEditBuffer"):
                     program_buffer = adaptation.convertToProgramDump(0x00, edit_buffer, target_no)
                 else:
+                    # this code path should never be reached, because above it has been tested that program is alreadt a single program dump
                     program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
             elif hasattr(adaptation, "isEditBufferDump") and adaptation.isEditBufferDump(program):
                 program_buffer = adaptation.convertToProgramDump(0x00, program, target_no)
