@@ -139,7 +139,7 @@ def nameFromDump(message):
     _log(1, f"nameFromDump(message)")
     """Extract the patch name from the supplied sysex message."""
     patchData =_extract_patch_data(message)
-    return ''.join([chr(c) for c in patchData[NAME_OFFSET:NAME_OFFSET+NAME_LEN]])
+    return ''.join([chr(c) for c in patchData[NAME_OFFSET:NAME_OFFSET+NAME_LEN]]).strip()
 
 
 def renamePatch(message, new_name):
