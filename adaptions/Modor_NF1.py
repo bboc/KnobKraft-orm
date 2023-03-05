@@ -324,7 +324,7 @@ def isEditBufferDump(message):
 
 
 def convertToEditBuffer(channel, message):
-    _log(1,"convertToEditBuffer(channel, {message})")
+    _log(1,"convertToEditBuffer({channel}, message)")
     """
     Convert the message stored in the patch database to a message that updates the edit buffer in the synt. 
     Return message or messages (all in a single list of integers).
@@ -369,7 +369,7 @@ def test_isSingleProgramDump():
 
 
 def convertToProgramDump(channel, message, program_number):
-    _log(1,f"convertToProgramDump({channel}, {message}, {program_number})")    
+    _log(1,f"convertToProgramDump({channel}, message, {program_number})")    
     """
     Update message stored in database so that it is sent to a specific position in the synths memory. 
     Requires v2.0.0
@@ -379,7 +379,6 @@ def convertToProgramDump(channel, message, program_number):
     payload = [bank, patch]
     payload.extend(_extract_patch_data(message))
     pp = _pack_payload(payload, PATCH_MEMORY_DUMP)
-    _log(1,pp)
     return pp
 
 
