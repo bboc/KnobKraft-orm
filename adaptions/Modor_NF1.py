@@ -570,6 +570,39 @@ def _failUnless(condition, msg=None):
     else:
         print(location, "✔")
 
+def test_data():
+    """Return a dictionary with test data."""
+
+    def programs(messages):
+        """
+        Return return one or more programs:
+        - message: the sysex message (as list of bytes)
+        - name: the name of that patch
+
+        """
+        yield dict(
+            message=TEST_MESSAGE,
+            name='VeloNoizPS',
+            number=0x01,
+            is_edit_buffer=False, # with the Modor it's actually a program dump
+            #target_no=0x02,
+        )
+
+    return dict(
+        # sysex="testData/MySyexFile.syx",  # sysex data to load, then the program generator can access the messages from that file
+        program_generator=programs, 
+        # convert_to_edit_buffer_produces_program_dump: False (appears to be a workaround for Alesis Andromeda)
+        detection_reply=(
+            TEST_MESSAGE,  #  the message handed into channelIfValidDeviceResponse()
+            9), # a midi channel that should come out
+        # device_detect_call: the valid call produced by createDeviceDetectMessage for channel 0 (as string "FF EE 3A")
+        # device_detect_reply: input for channelIfValidDeviceResponse() again as string "AA BB C3" that must return channel 1! 
+        # program_dump_request: result of "createProgramDumpRequest() for bank 0, program 0 (as string)
+        rename_name="new name",
+        friendly_bank_name=(2, 'C')
+    )
+
+
 if __name__ == '__main__':
     """run all tests"""
     _run_tests()
