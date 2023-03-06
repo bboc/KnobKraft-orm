@@ -10,6 +10,13 @@ import knobkraft
 import functools
 
 
+"""
+Notes:
+
+- test are failing if any of the test messages do not pass, we get no information which message failed, and we don't know if any have passed already
+
+"""
+
 def skip_targets_without_test_data(test_data_key=None):
     """Skip all adaptations that don't define test data."""
     def decorator(func):
@@ -130,8 +137,9 @@ def test_is_edit_buffer_dump(adaptation, test_data: AdaptationTestData):
     if not tested:
         pytest.skip(f"{adaptation.name()} does not provide test data for test_is_edit_buffer_dump()")
 
+
 @skip_targets_without_test_data()
-def test_convert_to_edit_buffer_old(adaptation, test_data: AdaptationTestData):
+def test_convert_to_edit_buffer(adaptation, test_data: AdaptationTestData):
     if hasattr(adaptation, "convertToEditBuffer") or hasattr(adaptation, "convertToProgramDump"):
         for program_data in test_data.programs:
             if "target_no" in program_data:
@@ -265,9 +273,13 @@ def test_convert_to_program_dump_new(adaptation, test_data: AdaptationTestData):
 @skip_targets_without_test_data()
 @skip_targets_without("numberFromDump")
 def test_number_from_dump(adaptation, test_data: AdaptationTestData):
+    tested = False
     for program in test_data.programs:
-        assert adaptation.numberFromDump(program["message"]) == program["number"]
-
+        if program.get("number") and not program.get("is_edit_buffer"):
+            assert adaptation.numberFromDump(program["message"]) == program["number"]
+            tested = True
+    if not tested: 
+        pytest.skip(f"{adaptation.name()} did not provide test data for testing numberFromDump")
 
 
 @skip_targets_without_test_data()
